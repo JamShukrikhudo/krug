@@ -37,8 +37,7 @@ button.krug-bubble.missing { color: alpha(#ffffff, 0.45); }
 button.krug-bubble.missing:hover { background-color: alpha(#3a3a42, 0.96); color: #ffffff; }
 button.krug-bubble .format { font-size: 17pt; font-weight: 800; letter-spacing: 0.5px; }
 button.krug-bubble .caption { font-size: 9.5pt; font-weight: 600; }
-button.krug-bubble image { -gtk-icon-size: 26px; color: inherit; -gtk-icon-style: symbolic; }
-image { -gtk-icon-style: symbolic; }
+button.krug-bubble image { -gtk-icon-size: 26px; }
 
 button.krug-center {
   min-width: 132px; min-height: 132px; padding: 8px;
@@ -89,10 +88,9 @@ def load_css() -> None:
     display = Gdk.Display.get_default()
     Gtk.StyleContext.add_provider_for_display(display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
     # свои иконки: одинаковый вид при любой теме, в том числе в новых Adwaita без старых имён
-    theme = Gtk.IconTheme.get_for_display(display)
-    # файлы прямо в папке поиска GTK находит без index.theme («иконки вне темы»)
-    for sub in ("actions", "apps"):
-        theme.add_search_path(str(ICONS_DIR / "hicolor" / "scalable" / sub))
+    # папка с подпапкой hicolor: GTK находит иконки как часть темы и перекрашивает
+    # символьные иконки в цвет текста (иконки вне темы не перекрашиваются)
+    Gtk.IconTheme.get_for_display(display).add_search_path(str(ICONS_DIR))
     _css_loaded = True
 
 
