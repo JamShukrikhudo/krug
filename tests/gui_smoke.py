@@ -92,7 +92,23 @@ def pick_pages(w):
     GLib.timeout_add(300, lambda: w.drop_pages() and False)
 
 
+def icon_gallery(app):
+    window = Gtk.ApplicationWindow(application=app, title="Иконки krug", default_width=900, default_height=600)
+    flow = Gtk.FlowBox(max_children_per_line=8, selection_mode=Gtk.SelectionMode.NONE, margin_start=12,
+                       margin_end=12, margin_top=12)
+    folder = ROOT / "krug" / "icons" / "hicolor" / "scalable" / "actions"
+    for svg in sorted(folder.glob("krug-*-symbolic.svg")):
+        name = svg.name[:-len(".svg")]
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        box.append(Gtk.Image(icon_name=name, pixel_size=32))
+        box.append(Gtk.Label(label=name[5:-9], css_classes=["caption"]))
+        flow.append(box)
+    window.set_child(Gtk.ScrolledWindow(child=flow))
+    return window
+
+
 STEPS = [
+    ("00-icons", icon_gallery),
     ("01-main", lambda app: MainWindow(app)),
     ("02-main-components", lambda app: (lambda w: (w.stack.set_visible_child_name("components"), w)[1])(MainWindow(app))),
     ("03-menu-convert", lambda app: menu(app, "convert", [photo])),

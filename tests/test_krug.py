@@ -177,6 +177,19 @@ class Files(Base):
         self.assertEqual(moved.read_bytes(), b"data")
 
 
+class Icons(unittest.TestCase):
+    def test_every_used_icon_is_bundled(self):
+        import re
+        root = Path(__file__).resolve().parent.parent
+        folder = root / "krug" / "icons" / "hicolor" / "scalable" / "actions"
+        used = set()
+        for py in (root / "krug").rglob("*.py"):
+            used |= set(re.findall(r"krug-[a-z-]+-symbolic", py.read_text(encoding="utf-8")))
+        self.assertGreater(len(used), 30)
+        missing = sorted(n for n in used if not (folder / f"{n}.svg").exists())
+        self.assertEqual(missing, [])
+
+
 class Ring(unittest.TestCase):
     def test_bubble_positions(self):
         pts = bubble_positions(4, 500, 400)
