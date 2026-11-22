@@ -9,7 +9,7 @@ APP_DIR="$HOME/.local/share/krug"
 BIN="$HOME/.local/bin/krug"
 EXT_DIR="$HOME/.local/share/nautilus-python/extensions"
 
-PACKAGES=(python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1 python3-nautilus libnotify-bin wl-clipboard
+PACKAGES=(python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1 librsvg2-common python3-nautilus libnotify-bin wl-clipboard
           libgtk-4-media-gstreamer gstreamer1.0-plugins-good gstreamer1.0-libav
           imagemagick ffmpeg poppler-utils qpdf ghostscript img2pdf libreoffice-core
           libreoffice-writer libreoffice-calc libreoffice-impress)
