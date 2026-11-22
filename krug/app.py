@@ -59,12 +59,15 @@ class MainWindow(Adw.ApplicationWindow):
     def page_start(self) -> Gtk.Widget:
         page = Adw.PreferencesPage()
         intro = Adw.PreferencesGroup()
-        status = Adw.StatusPage(icon_name="io.github.krug", title="krug всегда под рукой",
-                                description="Выделите файл в «Файлах» и нажмите сочетание клавиш — "
-                                            "возле указателя появится круглое меню. Всё выполняется локально, "
-                                            "оригиналы не меняются, результат появится рядом.")
-        status.add_css_class("compact")
-        intro.add(status)
+        hero = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10, margin_top=6, margin_bottom=6)
+        hero.append(Gtk.Image(icon_name="io.github.krug", pixel_size=96))
+        hero.append(Gtk.Label(label="krug всегда под рукой", css_classes=["title-1"]))
+        hero.append(Gtk.Label(label="Выделите файл в «Файлах» и нажмите сочетание клавиш — возле указателя "
+                                    "появится круглое меню. Всё выполняется локально, оригиналы не меняются, "
+                                    "результат появится рядом.",
+                              wrap=True, justify=Gtk.Justification.CENTER, max_width_chars=60,
+                              css_classes=["dim-label"]))
+        intro.add(hero)
         page.add(intro)
 
         g = Adw.PreferencesGroup(title="Три меню", description="Или правый клик по файлу → krug")
