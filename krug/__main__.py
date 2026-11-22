@@ -1,0 +1,62 @@
+"""Командная строка krug.
+
+krug convert|tools|actions [ФАЙЛЫ...]   круглое меню; без файлов берётся выделение из «Файлов»
+krug list convert|tools|actions ФАЙЛЫ  показать пункты меню текстом (без окна)
+krug hotkeys install|remove            горячие клавиши Ctrl+Alt+1/2/3 в GNOME
+krug check                             какие внешние программы найдены
+"""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+from . import __version__, ops
+from .util import notify, read_selection, which
+
+MENUS = ("convert", "tools", "actions")
+TOOLS = (
+    ("magick", "convert"), ("ffmpeg",), ("soffice", "libreoffice"), ("pdftoppm",), ("qpdf",), ("gs",),
+    ("img2pdf",), ("wl-copy",), ("notify-send",), ("rembg",), ("kdeconnect-cli",),
+)
+
+
+def print_items(items: list[ops.Item], indent: str = "") -> None:
+    for item in items:
+        note = f"   [{item.missing}]" if item.missing else ""
+        print(f"{indent}{item.label}{note}")
+        print_items(item.children, indent + "    ")
+
+
+def main(argv: list[str]) -> int:
+    if not argv or argv[0] in ("-h", "--help"):
+        print(__doc__.strip())
+        return 0
+    command, args = argv[0], argv[1:]
+    if command in ("-V", "--version"):
+        print(__version__)
+    elif command == "check":
+        for names in TOOLS:
+            print(f"{'OK     ' if which(*names) else 'НЕТ    '} {names[0]}")
+    elif command == "hotkeys" and args and args[0] in ("install", "remove"):
+        from . import hotkeys
+        hotkeys.install() if args[0] == "install" else hotkeys.remove()
+    elif command == "list" and args and args[0] in MENUS:
+        print_items(ops.build_menu(args[0], [Path(a).absolute() for a in args[1:]]))
+    elif command in MENUS:
+        files = [Path(a).absolute() for a in args if Path(a).exists()] or read_selection()
+        if not files:
+            notify("krug", "Сначала выделите файл в «Файлах»")
+            return 1
+        if not ops.build_menu(command, files):
+            notify("krug", "Для этих файлов здесь нет операций. Выделите файлы одного типа")
+            return 1
+        from . import menu
+        return menu.show(command, files)
+    else:
+        print(__doc__.strip(), file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
