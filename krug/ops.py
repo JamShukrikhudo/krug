@@ -47,6 +47,8 @@ class Item:
     children: list["Item"] = field(default_factory=list)
     missing: str = ""  # подсказка, если не хватает внешней программы
     quiet: bool = False  # не показывать «Готово» (мгновенные действия)
+    icon: str = ""  # символьная иконка; без неё в кнопке крупно пишется название
+    editor: str = ""  # открыть окно редактора: image, video, audio, pdf
 
 
 def ext(path: Path) -> str:
@@ -414,6 +416,7 @@ def _tools_menu(files: list[Path], kind: str) -> list[Item]:
     if kind == "image":
         miss = _missing("magick", "convert", HINT_IM)
         items += [
+            Item("Редактор", editor="image", missing=miss),
             Item("Сжать", each=image_compress, missing=miss),
             Item("Размер", missing=miss, children=[
                 Item("50 %", each=image_tool(["-resize", "50%"], "-50")),
@@ -435,6 +438,8 @@ def _tools_menu(files: list[Path], kind: str) -> list[Item]:
         ]
     elif kind == "pdf":
         miss = _missing("qpdf", HINT_QPDF)
+        if len(files) == 1:
+            items.append(Item("Страницы", editor="pdf", missing=miss or _missing("pdftoppm", HINT_POPPLER)))
         if len(files) > 1:
             items.append(Item("Объединить", batch=pdf_merge, missing=miss))
         items += [
@@ -449,6 +454,7 @@ def _tools_menu(files: list[Path], kind: str) -> list[Item]:
     elif kind == "video":
         miss = _missing("ffmpeg", HINT_FF)
         items += [
+            Item("Редактор", editor="video", missing=miss),
             Item("Сжать", each=ffmpeg_op([*X264, "-crf", "28", "-b:a", "128k"], "mp4", "-compressed"), missing=miss),
             Item("720p", each=ffmpeg_op([*X264, "-vf", "scale=-2:720", "-crf", "24", "-b:a", "128k"], "mp4", "-720p"), missing=miss),
             Item("Убрать звук", each=ffmpeg_op(["-an", "-c:v", "copy"], None, "-mute"), missing=miss),
@@ -458,6 +464,7 @@ def _tools_menu(files: list[Path], kind: str) -> list[Item]:
     elif kind == "audio":
         miss = _missing("ffmpeg", HINT_FF)
         items += [
+            Item("Редактор", editor="audio", missing=miss),
             Item("Сжать MP3 128k", each=ffmpeg_op(["-vn", "-c:a", "libmp3lame", "-b:a", "128k"], "mp3", "-128k"), missing=miss),
             Item("Моно", each=ffmpeg_op(["-vn", "-ac", "1"], None, "-mono"), missing=miss),
             Item("Скорость ×1.5", each=ffmpeg_op(["-vn", "-af", "atempo=1.5"], None, "-x1.5"), missing=miss),
@@ -485,12 +492,60 @@ def _actions_menu(files: list[Path], kind: str) -> list[Item]:
     return items
 
 
+ICONS = {
+    "Редактор": "document-edit-symbolic",
+    "Страницы": "view-grid-symbolic",
+    "Сжать": "package-x-generic-symbolic",
+    "Сжать MP3 128k": "package-x-generic-symbolic",
+    "Размер": "view-fullscreen-symbolic",
+    "Повернуть": "object-rotate-right-symbolic",
+    "Вправо 90°": "object-rotate-right-symbolic",
+    "Влево 90°": "object-rotate-left-symbolic",
+    "На 180°": "view-refresh-symbolic",
+    "Зеркально": "object-flip-horizontal-symbolic",
+    "Белая рамка": "view-paged-symbolic",
+    "Ч/б": "color-select-symbolic",
+    "Убрать метаданные": "edit-clear-all-symbolic",
+    "Объединить": "list-add-symbolic",
+    "Разделить по страницам": "edit-cut-symbolic",
+    "720p": "video-display-symbolic",
+    "Убрать звук": "audio-volume-muted-symbolic",
+    "Скорость ×2": "media-seek-forward-symbolic",
+    "Скорость ×1.5": "media-seek-forward-symbolic",
+    "Кадр в PNG": "camera-photo-symbolic",
+    "Моно": "audio-speakers-symbolic",
+    "Архив ZIP": "package-x-generic-symbolic",
+    "Распаковать": "folder-open-symbolic",
+    "Удалить фон": "image-x-generic-symbolic",
+    "Копировать путь": "edit-copy-symbolic",
+    "Копировать имя": "insert-text-symbolic",
+    "Копировать файл": "edit-paste-symbolic",
+    "Копировать в…": "folder-symbolic",
+    "Переместить в…": "folder-download-symbolic",
+    "Дубликат": "edit-copy-symbolic",
+    "Терминал здесь": "utilities-terminal-symbolic",
+    "На телефон": "phone-symbolic",
+    "Текст TXT": "text-x-generic-symbolic",
+    "Страницы PNG": "image-x-generic-symbolic",
+    "Страницы JPEG": "image-x-generic-symbolic",
+    "Звук в MP3": "audio-x-generic-symbolic",
+}
+
+
+def _with_icons(items: list[Item]) -> list[Item]:
+    for item in items:
+        if not item.icon:
+            item.icon = ICONS.get(item.label, "")
+        _with_icons(item.children)
+    return items
+
+
 def build_menu(menu: str, files: list[Path]) -> list[Item]:
     if not files:
         return []
     kind = kind_of(files)
     builder = {"convert": _convert_menu, "tools": _tools_menu, "actions": _actions_menu}[menu]
-    return builder(files, kind)
+    return _with_icons(builder(files, kind))
 
 
 def execute(item: Item, files: list[Path], folder: Path | None = None) -> tuple[list[Path], list[str]]:
