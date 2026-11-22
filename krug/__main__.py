@@ -4,7 +4,7 @@ krug                                   главное окно: инструкц
 krug convert|tools|actions [ФАЙЛЫ...]   круглое меню; без файлов берётся выделение из «Файлов»
 krug edit ФАЙЛЫ...                      редактор с предпросмотром (фото, видео, звук, страницы PDF)
 krug list convert|tools|actions ФАЙЛЫ  показать пункты меню текстом (без окна)
-krug hotkeys install|remove            горячие клавиши Ctrl+Alt+1/2/3 в GNOME
+krug hotkeys install|remove            сочетания Ctrl+Alt+1/2/3 в «Файлах»
 krug check                             какие внешние программы найдены
 """
 from __future__ import annotations
@@ -63,7 +63,7 @@ def main(argv: list[str]) -> int:
     elif command in MENUS:
         files = [Path(a).absolute() for a in args if Path(a).exists()] or read_selection()
         if not files:
-            notify("krug", "Сначала выделите файл в «Файлах»")
+            notify("krug", "Выделите файл в «Файлах» и нажмите сочетание там же, или правый клик → krug")
             return 1
         if not ops.build_menu(command, files):
             notify("krug", "Для этих файлов здесь нет операций. Выделите файлы одного типа")

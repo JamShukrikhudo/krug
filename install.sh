@@ -62,7 +62,7 @@ PYTHONPATH="$APP_DIR" exec /usr/bin/python3 -m krug "\$@"
 EOF
 chmod +x "$BIN"
 
-"$BIN" hotkeys install || echo "Горячие клавиши настроить не удалось (не GNOME?). Правый клик в «Файлах» всё равно работает."
+"$BIN" hotkeys install || echo "Сочетания клавиш настроить не удалось. Правый клик в «Файлах» всё равно работает."
 nautilus -q >/dev/null 2>&1 || true
 
 echo

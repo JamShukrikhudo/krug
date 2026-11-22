@@ -12,7 +12,7 @@ os.environ["KRUG_NO_NOTIFY"] = "1"
 
 from krug import ops, util  # noqa: E402
 from krug.geometry import RADIUS, bubble_positions  # noqa: E402
-from krug import history, params  # noqa: E402
+from krug import history, hotkeys, params  # noqa: E402
 
 
 class Base(unittest.TestCase):
@@ -175,6 +175,32 @@ class Files(Base):
         (moved,) = ops.move_to([src], target)
         self.assertFalse(src.exists())
         self.assertEqual(moved.read_bytes(), b"data")
+
+
+class Hotkeys(Base):
+    def test_merge_keeps_foreign_lines(self):
+        text = "; комментарий\nF4 Terminal\n<Control><Alt>1 old script\n"
+        merged = hotkeys.merge_accels(text, install=True)
+        self.assertIn("F4 Terminal", merged)
+        self.assertNotIn("old script", merged)  # тот же ключ занят krug
+        self.assertIn("<Control><Alt>2 krug — Инструменты", merged)
+        self.assertEqual(hotkeys.merge_accels(merged, install=True), merged)
+        removed = hotkeys.merge_accels(merged, install=False)
+        self.assertEqual(removed, "; комментарий\nF4 Terminal\n")
+
+    def test_install_and_remove(self):
+        for var in ("XDG_CONFIG_HOME", "XDG_DATA_HOME"):
+            os.environ[var] = str(self.dir / var)
+            self.addCleanup(os.environ.pop, var)
+        self.assertFalse(hotkeys.installed())
+        hotkeys.install()
+        self.assertTrue(hotkeys.installed())
+        script = hotkeys.scripts_dir() / "krug — Конвертация"
+        self.assertTrue(os.access(script, os.X_OK))
+        self.assertIn(" convert $NAUTILUS_SCRIPT_SELECTED_FILE_PATHS", script.read_text(encoding="utf-8"))
+        hotkeys.remove()
+        self.assertFalse(hotkeys.installed())
+        self.assertFalse(script.exists())
 
 
 class Icons(unittest.TestCase):
