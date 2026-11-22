@@ -73,6 +73,7 @@ button.krug-center .file { font-size: 9pt; color: alpha(#ffffff, 0.7); }
 """
 
 _css_loaded = False
+ICONS_DIR = Path(__file__).resolve().parent / "icons"
 
 
 def load_css() -> None:
@@ -84,12 +85,14 @@ def load_css() -> None:
         provider.load_from_string(CSS)
     except AttributeError:  # GTK до 4.12
         provider.load_from_data(CSS.encode())
-    Gtk.StyleContext.add_provider_for_display(
-        Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+    display = Gdk.Display.get_default()
+    Gtk.StyleContext.add_provider_for_display(display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+    # свои иконки: одинаковый вид при любой теме, в том числе в новых Adwaita без старых имён
+    Gtk.IconTheme.get_for_display(display).add_search_path(str(ICONS_DIR))
     _css_loaded = True
 
 
-def icon_name(name: str, fallback: str = "applications-utilities-symbolic") -> str:
+def icon_name(name: str, fallback: str = "krug-tools-symbolic") -> str:
     """Иконка из темы; если такой нет, берётся запасная, чтобы не было пустого квадрата."""
     if not name:
         return ""

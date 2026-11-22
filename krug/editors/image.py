@@ -36,11 +36,11 @@ class ImageEditor(EditorWindow):
 
         # --- предпросмотр
         bar = Gtk.Box(spacing=6)
-        self.crop_toggle = Gtk.ToggleButton(child=self._icon_label("edit-select-all-symbolic", "Выделить область"))
+        self.crop_toggle = Gtk.ToggleButton(child=self._icon_label("krug-select-symbolic", "Выделить область"))
         self.crop_toggle.connect("toggled", lambda _b: self.refresh_view())
-        reset_crop = Gtk.Button(child=self._icon_label("edit-clear-symbolic", "Сбросить область"))
+        reset_crop = Gtk.Button(child=self._icon_label("krug-clear-symbolic", "Сбросить область"))
         reset_crop.connect("clicked", lambda _b: self.on_crop(None))
-        self.original_toggle = Gtk.ToggleButton(child=self._icon_label("view-dual-symbolic", "Оригинал"))
+        self.original_toggle = Gtk.ToggleButton(child=self._icon_label("krug-compare-symbolic", "Оригинал"))
         self.original_toggle.connect("toggled", lambda _b: self.refresh_view())
         for widget in (self.crop_toggle, reset_crop):
             bar.append(widget)
@@ -58,9 +58,9 @@ class ImageEditor(EditorWindow):
         # --- настройки
         g = self.group("Поворот")
         row = Gtk.Box(spacing=6, halign=Gtk.Align.CENTER, margin_top=6, margin_bottom=6)
-        for icon, tip, fn in (("object-rotate-left-symbolic", "Влево на 90°", lambda: self.rotate(-90)),
-                              ("object-rotate-right-symbolic", "Вправо на 90°", lambda: self.rotate(90)),
-                              ("object-flip-horizontal-symbolic", "Зеркально", self.flip)):
+        for icon, tip, fn in (("krug-rotate-left-symbolic", "Влево на 90°", lambda: self.rotate(-90)),
+                              ("krug-rotate-right-symbolic", "Вправо на 90°", lambda: self.rotate(90)),
+                              ("krug-flip-symbolic", "Зеркально", self.flip)):
             b = Gtk.Button(icon_name=icon, tooltip_text=tip, css_classes=["circular", "flat"])
             b.connect("clicked", lambda _b, fn=fn: fn())
             row.append(b)

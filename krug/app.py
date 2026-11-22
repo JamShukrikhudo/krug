@@ -11,9 +11,9 @@ from .ui import Adw, Gdk, Gio, GLib, Gtk, button_row, icon_name, load_css, show_
 from .util import which
 
 MENUS = (
-    ("convert", "Конвертация", "Ctrl+Alt+1", "Изменить формат файла", "emblem-synchronizing-symbolic"),
-    ("tools", "Инструменты", "Ctrl+Alt+2", "Сжать, обрезать или отредактировать", "applications-utilities-symbolic"),
-    ("actions", "Действия", "Ctrl+Alt+3", "Скопировать, переместить, удалить фон", "folder-symbolic"),
+    ("convert", "Конвертация", "Ctrl+Alt+1", "Изменить формат файла", "krug-convert-symbolic"),
+    ("tools", "Инструменты", "Ctrl+Alt+2", "Сжать, обрезать или отредактировать", "krug-tools-symbolic"),
+    ("actions", "Действия", "Ctrl+Alt+3", "Скопировать, переместить, удалить фон", "krug-folder-symbolic"),
 )
 COMPONENTS = (
     (("magick", "convert"), "ImageMagick", "Изображения и редактор фото", "imagemagick"),
@@ -39,12 +39,12 @@ class MainWindow(Adw.ApplicationWindow):
         super().__init__(application=app, title="krug", default_width=760, default_height=720)
         self.groups: dict[Adw.PreferencesPage, list[Adw.PreferencesGroup]] = {}
         self.stack = Adw.ViewStack()
-        self.stack.add_titled_with_icon(self.page_start(), "start", "Начало", "go-home-symbolic")
+        self.stack.add_titled_with_icon(self.page_start(), "start", "Начало", "krug-home-symbolic")
         self.history_page = Adw.PreferencesPage()
-        self.stack.add_titled_with_icon(self.history_page, "history", "Журнал", "document-open-recent-symbolic")
+        self.stack.add_titled_with_icon(self.history_page, "history", "Журнал", "krug-clock-symbolic")
         self.components_page = Adw.PreferencesPage()
         self.stack.add_titled_with_icon(self.components_page, "components", "Компоненты",
-                                        "application-x-addon-symbolic")
+                                        "krug-puzzle-symbolic")
         self.stack.connect("notify::visible-child-name", lambda *_: self.refresh())
 
         header = Adw.HeaderBar()
@@ -165,10 +165,10 @@ class MainWindow(Adw.ApplicationWindow):
                 subtitle = ", ".join(p.name for p in results[:3]) + (" …" if len(results) > 3 else "")
             row = Adw.ActionRow(title=f"{e.get('label', '')} · {when}", subtitle=subtitle, subtitle_lines=2)
             row.add_prefix(Gtk.Image.new_from_icon_name(
-                "dialog-error-symbolic" if e.get("error") else "emblem-ok-symbolic"))
+                "krug-error-symbolic" if e.get("error") else "krug-check-symbolic"))
             existing = [p for p in results if p.exists()]
             if existing:
-                show = Gtk.Button(icon_name="folder-open-symbolic", tooltip_text="Показать в «Файлах»",
+                show = Gtk.Button(icon_name="krug-folder-open-symbolic", tooltip_text="Показать в «Файлах»",
                                   valign=Gtk.Align.CENTER, css_classes=["flat"])
                 show.connect("clicked", lambda _b, p=existing[0]: show_in_files(p, self))
                 row.add_suffix(show)
@@ -184,7 +184,7 @@ class MainWindow(Adw.ApplicationWindow):
         for names, title, what, package in COMPONENTS:
             found = which(*names)
             row = Adw.ActionRow(title=title, subtitle=what if found else f"{what} · не установлено")
-            row.add_prefix(Gtk.Image.new_from_icon_name("emblem-ok-symbolic" if found else "dialog-warning-symbolic"))
+            row.add_prefix(Gtk.Image.new_from_icon_name("krug-check-symbolic" if found else "krug-warning-symbolic"))
             if not found:
                 missing.append(package)
             g.add(row)
@@ -201,12 +201,12 @@ class MainWindow(Adw.ApplicationWindow):
             g = Adw.PreferencesGroup(title="Установить недостающее", description="Скопируйте и выполните в терминале")
             row = Adw.ActionRow(title=command, title_selectable=True)
             row.set_title_lines(3)
-            copy = Gtk.Button(icon_name="edit-copy-symbolic", tooltip_text="Копировать", valign=Gtk.Align.CENTER,
+            copy = Gtk.Button(icon_name="krug-copy-symbolic", tooltip_text="Копировать", valign=Gtk.Align.CENTER,
                               css_classes=["flat"])
             copy.connect("clicked", lambda _b: self.copy_text(command))
             row.add_suffix(copy)
             g.add(row)
-            g.add(button_row("Проверить снова", "view-refresh-symbolic", self.fill_components))
+            g.add(button_row("Проверить снова", "krug-refresh-symbolic", self.fill_components))
             self.add_group(self.components_page, g)
 
     def copy_text(self, text: str) -> None:

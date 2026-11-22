@@ -53,10 +53,10 @@ class PdfPagesEditor(EditorWindow):
 
         g = self.group("Действия", "Каждое действие создаёт новый PDF рядом с оригиналом")
         for title, subtitle, icon, fn in (
-            ("Удалить выбранные", "Новый PDF без этих страниц", "edit-delete-symbolic", self.drop_pages),
-            ("Повернуть выбранные вправо", "На 90°, остальные без изменений", "object-rotate-right-symbolic",
+            ("Удалить выбранные", "Новый PDF без этих страниц", "krug-trash-symbolic", self.drop_pages),
+            ("Повернуть выбранные вправо", "На 90°, остальные без изменений", "krug-rotate-right-symbolic",
              lambda: self.rotate_pages("+90")),
-            ("Повернуть выбранные влево", "На 90°", "object-rotate-left-symbolic", lambda: self.rotate_pages("-90")),
+            ("Повернуть выбранные влево", "На 90°", "krug-rotate-left-symbolic", lambda: self.rotate_pages("-90")),
         ):
             row = Adw.ActionRow(title=title, subtitle=subtitle, activatable=True)
             row.add_prefix(Gtk.Image.new_from_icon_name(icon))

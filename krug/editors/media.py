@@ -42,7 +42,7 @@ class MediaEditor(EditorWindow):
         else:
             box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18, valign=Gtk.Align.CENTER, vexpand=True,
                           css_classes=["krug-preview"])
-            icon = Gtk.Image(icon_name="audio-x-generic-symbolic", pixel_size=128, css_classes=["dim-label"])
+            icon = Gtk.Image(icon_name="krug-audio-symbolic", pixel_size=128, css_classes=["dim-label"])
             box.append(icon)
             self.controls = Gtk.MediaControls(margin_start=24, margin_end=24, margin_bottom=24)
             box.append(self.controls)
@@ -53,21 +53,21 @@ class MediaEditor(EditorWindow):
         self.start = spin_row("Начало, с", 0, 86400, 0, step=0.5, digits=1)
         self.end = spin_row("Конец, с", 0, 86400, 0, step=0.5, digits=1, subtitle="0 — до конца файла")
         for row, setter in ((self.start, "start"), (self.end, "end")):
-            take = Gtk.Button(icon_name="find-location-symbolic", tooltip_text="Взять текущий момент",
+            take = Gtk.Button(icon_name="krug-target-symbolic", tooltip_text="Взять текущий момент",
                               valign=Gtk.Align.CENTER, css_classes=["flat"])
             take.connect("clicked", lambda _b, r=row: r.set_value(self.position()))
             row.add_suffix(take)
             row.connect("notify::value", lambda r, _p, s=setter: self.on_interval(s, r.get_value()))
             g.add(row)
-        g.add(button_row("Воспроизвести интервал", "media-playback-start-symbolic", self.play_interval))
+        g.add(button_row("Воспроизвести интервал", "krug-play-symbolic", self.play_interval))
 
         if video:
             g = self.group("Кадр")
             self.crop_switch = switch_row("Выделить область мышью", subtitle="Протяните рамку поверх видео")
             self.crop_switch.connect("notify::active", lambda r, _p: self.cropper.set_active(r.get_active()))
             g.add(self.crop_switch)
-            g.add(button_row("Сбросить область", "edit-clear-symbolic", lambda: self.on_crop(None)))
-            g.add(button_row("Сохранить текущий кадр в PNG", "camera-photo-symbolic", self.snapshot))
+            g.add(button_row("Сбросить область", "krug-clear-symbolic", lambda: self.on_crop(None)))
+            g.add(button_row("Сохранить текущий кадр в PNG", "krug-camera-symbolic", self.snapshot))
 
             g = self.group("Видео", "Результат сохраняется в MP4 (H.264)")
             self.res = combo_row("Разрешение", list(VIDEO_HEIGHTS))
