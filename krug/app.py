@@ -90,6 +90,7 @@ class MainWindow(Adw.ApplicationWindow):
         g = Adw.PreferencesGroup(title="Настройки")
         self.keys_switch = switch_row("Сочетания Ctrl+Alt+1/2/3", self.hotkeys_on(),
                                       "Работают в GNOME для файлов, выделенных в «Файлах»")
+        self.keys_switch.set_sensitive(hotkeys.available())
         self.keys_switch.connect("notify::active", self.on_hotkeys)
         g.add(self.keys_switch)
         page.add(g)

@@ -44,7 +44,11 @@ def main(argv: list[str]) -> int:
             print(f"{'OK     ' if which(*names) else 'НЕТ    '} {names[0]}")
     elif command == "hotkeys" and args and args[0] in ("install", "remove"):
         from . import hotkeys
-        hotkeys.install() if args[0] == "install" else hotkeys.remove()
+        try:
+            hotkeys.install() if args[0] == "install" else hotkeys.remove()
+        except RuntimeError as e:
+            print(f"Горячие клавиши: {e}", file=sys.stderr)
+            return 1
     elif command == "edit" and args:
         files = [Path(a).absolute() for a in args if Path(a).is_file()]
         kind = ops.kind_of(files) if files else ""
