@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests
+        run: /usr/bin/python3 -m unittest discover -s tests -v
+
+  real:
+    name: Real tools and GUI screenshots
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install GTK, libadwaita and tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1 adwaita-icon-theme fonts-dejavu-core \
+            libgtk-4-media-gstreamer gstreamer1.0-plugins-good gstreamer1.0-libav \
+            imagemagick ffmpeg poppler-utils qpdf ghostscript img2pdf xvfb xauth \
+            libreoffice-writer-nogui libreoffice-calc-nogui
+      - name: Make test files
+        run: |
+          mkdir assets && cd assets
+          convert -size 1600x1000 gradient:skyblue-orange -fill white -draw "circle 800,500 800,280" photo.jpg
+          convert -size 400x300 xc:none -fill tomato -draw "roundrectangle 40,40 360,260 30,30" photo2.png
+          for n in 1 2 3 4; do convert -size 600x800 xc:white -fill '#3584e4' -pointsize 300 -gravity center -annotate 0 "$n" "p$n.png"; done
+          img2pdf p1.png p2.png p3.png p4.png -o doc.pdf
+          img2pdf p1.png p2.png -o doc2.pdf
+          rm p?.png
+          ffmpeg -loglevel error -f lavfi -i testsrc=size=1280x720:rate=25 -f lavfi -i sine=frequency=440 -t 4 \
+            -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest clip.mp4
+          ffmpeg -loglevel error -f lavfi -i sine=frequency=330 -t 5 sound.mp3
+          printf 'Привет из krug\n\nВторой абзац.\n' > note.txt
+          soffice --headless --convert-to docx note.txt >/dev/null && rm note.txt
+          printf 'name,price\nчай,10\nкофе,25\n' > table.csv
+          ls -la
+      - name: Real operations
+        run: /usr/bin/python3 tests/ops_smoke.py assets
+      - name: GUI smoke test with screenshots
+        run: |
+          xvfb-run -a -s "-screen 0 1366x850x24" env GDK_BACKEND=x11 GSK_RENDERER=cairo \
+            /usr/bin/python3 tests/gui_smoke.py assets shots 2>&1 | tee shots-log.txt
+          exit ${PIPESTATUS[0]}
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: |
+            shots/*.png
+            shots-log.txt

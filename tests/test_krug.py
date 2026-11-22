@@ -11,7 +11,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 os.environ["KRUG_NO_NOTIFY"] = "1"
 
 from krug import ops, util  # noqa: E402
-from krug.geometry import R_IN, R_OUT, sector_index  # noqa: E402
+from krug.geometry import RADIUS, bubble_positions  # noqa: E402
+from krug import history, params  # noqa: E402
 
 
 class Base(unittest.TestCase):
@@ -66,6 +67,9 @@ class Kinds(Base):
         self.assertIn("Объединить", self.labels("tools", "a.pdf", "b.pdf"))
         self.assertNotIn("Объединить", self.labels("tools", "a.pdf"))
         self.assertEqual(self.labels("tools", "a.zip"), ["Распаковать"])
+        self.assertEqual(ops.build_menu("tools", [self.make("a.mp4")])[0].editor, "video")
+        self.assertEqual(ops.build_menu("tools", [self.make("a.pdf")])[0].editor, "pdf")
+        self.assertTrue(all(i.icon for i in ops.build_menu("actions", [self.make("a.png")])))
         self.assertEqual(self.labels("tools", "a.xyz"), ["Архив ZIP"])
         self.assertEqual(self.labels("convert", "a.xyz"), [])
         self.assertIn("Удалить фон", self.labels("actions", "a.png"))
@@ -174,20 +178,87 @@ class Files(Base):
 
 
 class Ring(unittest.TestCase):
-    def test_sector_index(self):
-        mid = (R_IN + R_OUT) / 2
-        self.assertEqual(sector_index(0, 0, 4), -1)
-        self.assertIsNone(sector_index(R_OUT + 5, 0, 4))
-        self.assertIsNone(sector_index(mid, 0, 0))
-        self.assertEqual(sector_index(0, -mid, 4), 0)  # сверху
-        self.assertEqual(sector_index(mid, 0, 4), 1)   # справа
-        self.assertEqual(sector_index(0, mid, 4), 2)   # снизу
-        self.assertEqual(sector_index(-mid, 0, 4), 3)  # слева
-        self.assertEqual(sector_index(mid * math.cos(1), mid * math.sin(1), 1), 0)
+    def test_bubble_positions(self):
+        pts = bubble_positions(4, 500, 400)
+        expected = [(500, 400 - RADIUS), (500 + RADIUS, 400), (500, 400 + RADIUS), (500 - RADIUS, 400)]
+        for (x, y), (ex, ey) in zip(pts, expected):
+            self.assertAlmostEqual(x, ex)
+            self.assertAlmostEqual(y, ey)
         for count in range(1, 9):
-            for deg in range(0, 360, 7):
-                i = sector_index(mid * math.cos(math.radians(deg)), mid * math.sin(math.radians(deg)), count)
-                self.assertTrue(0 <= i < count)
+            for x, y in bubble_positions(count, 0, 0):
+                self.assertAlmostEqual(math.hypot(x, y), RADIUS)
+
+
+class Params(unittest.TestCase):
+    def test_image_args(self):
+        p = params.ImageParams(crop=(0.25, 0.5, 0.5, 0.25), rotate=90, brightness=10, saturation=150, border=20)
+        args = params.image_args(p, 2000, 1000)
+        self.assertEqual(args[:3], ["-crop", "1000x250+500+500", "+repage"])
+        self.assertIn("-rotate", args)
+        self.assertIn("10x0", args)
+        self.assertIn("100,150,100", args)
+        self.assertEqual(args[-1], "20")
+        preview = params.image_args(p, 2000, 1000, scale=0.5)
+        self.assertEqual(preview[1], "500x125+250+250")
+        self.assertEqual(preview[-1], "10")
+        self.assertEqual(params.image_args(params.ImageParams(), 10, 10), [])
+        self.assertEqual(params.image_args(params.ImageParams(width=800), 10, 10)[-1], "800x")
+        self.assertEqual(params.image_args(params.ImageParams(width=800, height=600, keep_ratio=False), 10, 10)[-1],
+                         "800x600!")
+
+    def test_fit_and_drag(self):
+        self.assertEqual(params.fit_rect(400, 400, 200, 100), (0, 100, 400, 200))
+        rect = (0, 100, 400, 200)
+        self.assertEqual(params.drag_to_crop(rect, 300, 250, 100, 150), (0.25, 0.25, 0.5, 0.5))
+        self.assertEqual(params.drag_to_crop(rect, -50, 0, 500, 900), (0.0, 0.0, 1.0, 1.0))
+        self.assertIsNone(params.drag_to_crop(rect, 10, 110, 12, 112))
+
+    def test_video_args(self):
+        p = params.MediaParams(start=2, end=5, speed=2.0, height=720, crf=24, crop=(0.1, 0.1, 0.5, 0.5))
+        pre, post = params.video_args(p, duration=10, src_w=1920, src_h=1080)
+        self.assertEqual(pre, ["-ss", "2.000", "-to", "5.000"])
+        vf = post[post.index("-vf") + 1]
+        self.assertEqual(vf, "crop=960:540:192:108,scale=-2:720,setpts=PTS/2")
+        self.assertIn("atempo=2", post)
+        pre, post = params.video_args(params.MediaParams(end=10, mute=True), duration=10)
+        self.assertEqual(pre, [])
+        self.assertIn("-an", post)
+        with self.assertRaises(util.OpError):
+            params.video_args(params.MediaParams(start=5, end=3))
+        with self.assertRaises(util.OpError):
+            params.video_args(params.MediaParams(crop=(0, 0, 1, 1)))
+        self.assertEqual(params.crop_filter((0.9, 0.9, 0.5, 0.5), 101, 101), "crop=50:50:51:51")
+
+    def test_audio_args(self):
+        pre, post = params.audio_args(params.MediaParams(mono=True, bitrate="128k", speed=1.5), ["-c:a", "libmp3lame"],
+                                      lossless=False)
+        self.assertEqual(post, ["-vn", "-c:a", "libmp3lame", "-b:a", "128k", "-ac", "1", "-af", "atempo=1.5"])
+        _pre, post = params.audio_args(params.MediaParams(), [], lossless=True)
+        self.assertNotIn("-b:a", post)
+
+    def test_parse_pages(self):
+        self.assertEqual(params.parse_pages(" 3, 1 ,2 ", 3), "3,1,2")
+        self.assertEqual(params.parse_pages("1-4,7", 9), "1-4,7")
+        for bad in ("", "a", "1,,2", "0", "10"):
+            with self.assertRaises(util.OpError):
+                params.parse_pages(bad, 9)
+
+
+class History(Base):
+    def test_history_roundtrip(self):
+        os.environ["XDG_STATE_HOME"] = str(self.dir)
+        self.addCleanup(os.environ.pop, "XDG_STATE_HOME")
+        self.assertEqual(history.load(), [])
+        history.add("PDF", [self.dir / "a.pdf"], [])
+        history.add("Сжать", [], ["ошибка"])
+        history.add("Ничего", [], [])
+        entries = history.load()
+        self.assertEqual([e["label"] for e in entries], ["Сжать", "PDF"])
+        self.assertEqual(entries[0]["error"], "ошибка")
+        history.history_file().write_text("{broken", encoding="utf-8")
+        self.assertEqual(history.load(), [])
+        history.clear()
+        self.assertFalse(history.history_file().exists())
 
 
 if __name__ == "__main__":
