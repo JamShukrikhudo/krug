@@ -19,6 +19,11 @@ def _path(menu: str) -> str:
     return f"{BASE}krug-{menu}/"
 
 
+def installed() -> bool:
+    paths = Gio.Settings.new(SCHEMA).get_strv("custom-keybindings")
+    return all(_path(menu) in paths for menu, _n, _b in KEYS)
+
+
 def install() -> None:
     launcher = Path.home() / ".local" / "bin" / "krug"
     settings = Gio.Settings.new(SCHEMA)

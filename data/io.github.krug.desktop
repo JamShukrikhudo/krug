@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=krug
+Comment=Круглое меню для файлов: конвертация, инструменты, действия
+Exec=@BIN@
+Icon=io.github.krug
+Terminal=false
+Categories=Utility;FileTools;
+Keywords=convert;pdf;image;video;конвертер;файлы;
+StartupNotify=true
