@@ -37,7 +37,8 @@ button.krug-bubble.missing { color: alpha(#ffffff, 0.45); }
 button.krug-bubble.missing:hover { background-color: alpha(#3a3a42, 0.96); color: #ffffff; }
 button.krug-bubble .format { font-size: 17pt; font-weight: 800; letter-spacing: 0.5px; }
 button.krug-bubble .caption { font-size: 9.5pt; font-weight: 600; }
-button.krug-bubble image { -gtk-icon-size: 26px; }
+button.krug-bubble image { -gtk-icon-size: 26px; color: inherit; -gtk-icon-style: symbolic; }
+image { -gtk-icon-style: symbolic; }
 
 button.krug-center {
   min-width: 132px; min-height: 132px; padding: 8px;
