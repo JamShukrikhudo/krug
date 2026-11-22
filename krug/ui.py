@@ -88,7 +88,10 @@ def load_css() -> None:
     display = Gdk.Display.get_default()
     Gtk.StyleContext.add_provider_for_display(display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
     # свои иконки: одинаковый вид при любой теме, в том числе в новых Adwaita без старых имён
-    Gtk.IconTheme.get_for_display(display).add_search_path(str(ICONS_DIR))
+    theme = Gtk.IconTheme.get_for_display(display)
+    # файлы прямо в папке поиска GTK находит без index.theme («иконки вне темы»)
+    for sub in ("actions", "apps"):
+        theme.add_search_path(str(ICONS_DIR / "hicolor" / "scalable" / sub))
     _css_loaded = True
 
 
