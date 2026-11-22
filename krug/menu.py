@@ -53,6 +53,11 @@ class RadialMenu(Gtk.ApplicationWindow):
         keys.connect("key-pressed", self.on_key)
         self.add_controller(keys)
 
+        # размер экрана задаём и сами: без оконного менеджера fullscreen() не срабатывает
+        monitors = Gdk.Display.get_default().get_monitors()
+        if monitors.get_n_items():
+            geometry = monitors.get_item(0).get_geometry()
+            self.set_default_size(geometry.width, geometry.height)
         self.fullscreen()
         # если событие входа указателя не пришло, ставим кольцо в центр экрана
         GLib.timeout_add(250, self.fallback_center)
@@ -149,7 +154,7 @@ class RadialMenu(Gtk.ApplicationWindow):
     def make_center(self) -> Gtk.Button:
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, valign=Gtk.Align.CENTER)
         if len(self.stack) > 1:
-            box.append(Gtk.Image.new_from_icon_name("go-previous-symbolic"))
+            box.append(Gtk.Image.new_from_icon_name("krug-back-symbolic"))
             box.append(Gtk.Label(label="Назад", css_classes=["title"]))
         else:
             box.append(Gtk.Label(label=self.menu_title, css_classes=["title"]))
