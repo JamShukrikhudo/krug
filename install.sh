@@ -10,9 +10,16 @@ BIN="$HOME/.local/bin/krug"
 EXT_DIR="$HOME/.local/share/nautilus-python/extensions"
 
 PACKAGES=(python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1 librsvg2-common python3-nautilus libnotify-bin wl-clipboard
-          libgtk-4-media-gstreamer gstreamer1.0-plugins-good gstreamer1.0-libav
+          gstreamer1.0-plugins-good gstreamer1.0-libav
           imagemagick ffmpeg poppler-utils qpdf ghostscript img2pdf libreoffice-core
           libreoffice-writer libreoffice-calc libreoffice-impress)
+
+# С GTK 4.19.2 воспроизведение видео встроено в сам libgtk-4-1, отдельный пакет
+# libgtk-4-media-gstreamer с ним конфликтует. Нужен только на старых GTK (Ubuntu 24.04 и т.п.).
+gtk_version="$(dpkg-query -W -f='${Version}' libgtk-4-1 2>/dev/null || true)"
+if [[ -n "$gtk_version" ]] && dpkg --compare-versions "$gtk_version" lt 4.19.2; then
+    PACKAGES+=(libgtk-4-media-gstreamer)
+fi
 
 missing=()
 for pkg in "${PACKAGES[@]}"; do
@@ -22,7 +29,13 @@ if ((${#missing[@]})); then
     echo "Не установлены пакеты: ${missing[*]}"
     read -r -p "Установить их через apt? [y/N] " answer
     if [[ "$answer" =~ ^[YyДд]$ ]]; then
-        sudo apt install -y "${missing[@]}"
+        if ! sudo apt install -y "${missing[@]}"; then
+            echo
+            echo "apt не смог установить пакеты разом. Пробую по одному, чтобы поставить всё, что получится."
+            for pkg in "${missing[@]}"; do
+                sudo apt install -y "$pkg" >/dev/null 2>&1 && echo "  установлен: $pkg" || echo "  НЕ установлен: $pkg"
+            done
+        fi
     else
         echo "Пропускаю. Без них часть пунктов меню будет серой с подсказкой."
     fi
