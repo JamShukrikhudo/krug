@@ -62,6 +62,25 @@ PYTHONPATH="$APP_DIR" exec /usr/bin/python3 -m krug "\$@"
 EOF
 chmod +x "$BIN"
 
+# расширение GNOME Shell: те же Ctrl+Alt+1/2/3 на значках рабочего стола
+SHELL_EXT="krug@krug.github.io"
+SHELL_DIR="$HOME/.local/share/gnome-shell/extensions/$SHELL_EXT"
+rm -rf "$SHELL_DIR"
+mkdir -p "$SHELL_DIR"
+cp "$HERE/gnome-shell/$SHELL_EXT/"* "$SHELL_DIR/"
+desktop_note=""
+if command -v gsettings >/dev/null && gsettings get org.gnome.shell enabled-extensions >/dev/null 2>&1; then
+    enabled="$(gsettings get org.gnome.shell enabled-extensions)"
+    if [[ "$enabled" != *"'$SHELL_EXT'"* ]]; then
+        if [[ "$enabled" == "@as []" || "$enabled" == "[]" ]]; then
+            gsettings set org.gnome.shell enabled-extensions "['$SHELL_EXT']"
+        else
+            gsettings set org.gnome.shell enabled-extensions "${enabled%]}, '$SHELL_EXT']"
+        fi
+        desktop_note="Чтобы сочетания заработали и на рабочем столе, выйдите из сеанса и войдите снова (один раз)."
+    fi
+fi
+
 "$BIN" hotkeys install || echo "Сочетания клавиш настроить не удалось. Правый клик в «Файлах» всё равно работает."
 nautilus -q >/dev/null 2>&1 || true
 
@@ -71,4 +90,5 @@ echo "Готово. Проверка внешних программ:"
 echo
 echo "Как пользоваться: выделите файл в «Файлах» и нажмите Ctrl+Alt+1, 2 или 3,"
 echo "либо правый клик по файлу → krug. Главное окно — «krug» в списке приложений."
+[[ -n "$desktop_note" ]] && echo "$desktop_note"
 echo "Необязательно: удаление фона — pipx install \"rembg[cpu,cli]\"; отправка на телефон — sudo apt install kdeconnect"

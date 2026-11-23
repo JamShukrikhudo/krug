@@ -1,0 +1,7 @@
+{
+  "uuid": "krug@krug.github.io",
+  "name": "krug: клавиши на рабочем столе",
+  "description": "Ctrl+Alt+1/2/3 на значках рабочего стола открывают круглое меню krug для выделенных файлов. Нужен Gtk4 Desktop Icons NG (DING).",
+  "shell-version": ["46", "47", "48", "49", "50", "51"],
+  "url": "https://github.com/JamShukrikhudo/krug-ubuntuOS"
+}
