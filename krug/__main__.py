@@ -46,6 +46,9 @@ def main(argv: list[str]) -> int:
 
 
 def run(argv: list[str]) -> int:
+    # Vulkan на старых видеокартах Intel (Haswell) неполный, и прозрачное окно кольца
+    # получается сплошным фоном. OpenGL работает везде; свой выбор можно задать через GSK_RENDERER.
+    os.environ.setdefault("GSK_RENDERER", "gl")
     if not argv:
         from .app import run_app
         return run_app()
