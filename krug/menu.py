@@ -1,8 +1,9 @@
 """Круглое меню: светлый полупрозрачный диск с секторами, на нём карточки пунктов,
 в середине миниатюра файла и его имя. Экран вокруг не затемняется.
 
-На Wayland приложение не может поставить окно под курсор, поэтому окно прозрачное
-и на весь экран, а кольцо появляется там, где оказался указатель.
+Окно маленькое и прозрачное, ровно под кольцо. На Wayland программа не может сама встать
+под указатель, это делает расширение GNOME Shell krug@krug.github.io; без него GNOME
+ставит окно по центру экрана.
 """
 from __future__ import annotations
 
@@ -17,6 +18,9 @@ from .geometry import BUBBLE_H, BUBBLE_W, CENTER, DISC, bubble_positions, divide
 from .util import log, notify
 
 PER_PAGE = 8
+# окно ровно под кольцо, сверху строка наборов, снизу подсказка
+WIN_W = int(2 * DISC + 16)
+WIN_H = int(2 * DISC + 16 + 2 * 56)
 # как в образце: зажали клавишу — кольцо переключилось на свой набор
 MODES = (
     ("convert", "Shift", (Gdk.KEY_Shift_L, Gdk.KEY_Shift_R)),
@@ -84,10 +88,6 @@ class RadialMenu(Gtk.ApplicationWindow):
         overlay.add_overlay(self.fixed)
         self.set_child(overlay)
 
-        motion = Gtk.EventControllerMotion()
-        motion.connect("enter", self.on_pointer)
-        motion.connect("motion", self.on_pointer)
-        overlay.add_controller(motion)
         click = Gtk.GestureClick(button=0)
         click.connect("released", self.on_empty_click)
         overlay.add_controller(click)
@@ -99,14 +99,12 @@ class RadialMenu(Gtk.ApplicationWindow):
         keys.connect("key-pressed", self.on_key)
         self.add_controller(keys)
 
-        # размер экрана задаём и сами: без оконного менеджера fullscreen() не срабатывает
-        monitors = Gdk.Display.get_default().get_monitors()
-        if monitors.get_n_items():
-            geometry = monitors.get_item(0).get_geometry()
-            self.set_default_size(geometry.width, geometry.height)
-        self.fullscreen()
-        # если событие входа указателя не пришло, ставим кольцо в центр экрана
-        GLib.timeout_add(250, self.fallback_center)
+        self.set_default_size(WIN_W, WIN_H)
+        self.set_resizable(False)
+        self.place(WIN_W / 2, WIN_H / 2)
+        # щёлкнули в другое окно — кольцо больше не нужно
+        self.connect("notify::is-active", self.on_active)
+        self.was_active = False
 
     # ------------------------------------------------------------ состояние
     @property
@@ -135,18 +133,7 @@ class RadialMenu(Gtk.ApplicationWindow):
         else:
             self.close()
 
-    def fallback_center(self) -> bool:
-        if self.center is None:
-            self.place(self.get_width() / 2, self.get_height() / 2)
-        return False
-
     def place(self, x: float, y: float) -> None:
-        w, h = self.get_width(), self.get_height()
-        margin = DISC + 8
-        if w > 2 * margin:
-            x = min(max(x, margin), w - margin)
-        if h > 2 * margin:
-            y = min(max(y, margin), h - margin)
         self.center = (x, y)
         self.rebuild()
 
@@ -286,15 +273,15 @@ class RadialMenu(Gtk.ApplicationWindow):
         cr.fill()
 
     # -------------------------------------------------------------- события
-    def on_pointer(self, _controller, x: float, y: float) -> None:
-        if self.center is None:
-            self.place(x, y)
+    def on_active(self, *_args) -> None:
+        if self.is_active():
+            self.was_active = True
+        elif self.was_active:
+            self.close()
 
     def on_empty_click(self, gesture, _n: int, x: float, y: float) -> None:
         if gesture.get_current_button() == Gdk.BUTTON_SECONDARY:
             self.back()
-        elif self.center is None:
-            self.place(x, y)
         elif math.hypot(x - self.center[0], y - self.center[1]) > DISC:
             self.close()
 
