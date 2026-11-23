@@ -241,7 +241,6 @@ class RadialMenu(Gtk.ApplicationWindow):
                                  justify=Gtk.Justification.CENTER))
             if self.pages > 1:
                 box.append(Gtk.Label(label=f"{self.page + 1} / {self.pages}  ›", css_classes=["krug-page"]))
-        box.set_tooltip_text(self.menu_title)
         button = Gtk.Button(child=box, css_classes=["krug-center", "krug-pop"])
         button.set_size_request(CENTER, CENTER)
         button.connect("clicked", lambda _b: self.on_center())
