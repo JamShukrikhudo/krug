@@ -1,4 +1,5 @@
-"""Круглое меню: кнопки-«пузыри» с иконками вокруг указателя, в стиле libadwaita.
+"""Круглое меню: светлый полупрозрачный диск с секторами, на нём карточки пунктов,
+в середине миниатюра файла и его имя. Экран вокруг не затемняется.
 
 На Wayland приложение не может поставить окно под курсор, поэтому окно прозрачное
 и на весь экран, а кольцо появляется там, где оказался указатель.
@@ -8,12 +9,46 @@ from __future__ import annotations
 import math
 from pathlib import Path
 
-from .ui import Adw, Gdk, Gio, GLib, Gtk, Pango, icon_name, in_thread, load_css
+import cairo
+
+from .ui import Adw, Gdk, GdkPixbuf, Gio, GLib, Gtk, Pango, icon_name, in_thread, load_css
 from . import history, ops
-from .geometry import BUBBLE_H, BUBBLE_W, CENTER, DISC, bubble_positions
+from .geometry import BUBBLE_H, BUBBLE_W, CENTER, DISC, bubble_positions, divider_angles
 from .util import notify
 
 PER_PAGE = 8
+THUMB = 64
+
+
+def file_preview(path: Path) -> Gtk.Widget:
+    """Миниатюра файла: готовая из кэша «Файлов», уменьшенная картинка или значок типа файла."""
+    gfile = Gio.File.new_for_path(str(path))
+    try:
+        info = gfile.query_info("thumbnail::path,standard::icon", Gio.FileQueryInfoFlags.NONE, None)
+    except GLib.Error:
+        info = None
+    sources = []
+    if info and info.get_attribute_byte_string("thumbnail::path"):
+        sources.append(info.get_attribute_byte_string("thumbnail::path"))
+    if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tif", ".tiff", ".svg", ".avif", ".heic"}:
+        sources.append(str(path))
+    for source in sources:
+        try:
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(source, THUMB, THUMB, True)
+        except GLib.Error:
+            continue
+        picture = Gtk.Picture.new_for_paintable(Gdk.Texture.new_for_pixbuf(pixbuf))
+        picture.set_can_shrink(True)
+        picture.set_size_request(pixbuf.get_width(), pixbuf.get_height())
+        frame = Gtk.Box(css_classes=["krug-thumb-frame"], halign=Gtk.Align.CENTER, overflow=Gtk.Overflow.HIDDEN)
+        frame.append(picture)
+        return frame
+    image = Gtk.Image(pixel_size=THUMB)
+    if info and info.get_icon():
+        image.set_from_gicon(info.get_icon())
+    else:
+        image.set_from_icon_name("krug-file-symbolic")
+    return image
 
 
 class RadialMenu(Gtk.ApplicationWindow):
@@ -26,9 +61,13 @@ class RadialMenu(Gtk.ApplicationWindow):
         self.page = 0
         self.center: tuple[float, float] | None = None
         self.bubbles: list[Gtk.Button] = []
+        self.preview: Gtk.Widget | None = None
 
         self.set_decorated(False)
         self.add_css_class("krug-menu")
+        self.dark = Adw.StyleManager.get_default().get_dark()
+        if self.dark:
+            self.add_css_class("dark")
 
         self.backdrop = Gtk.DrawingArea()
         self.backdrop.set_draw_func(self.draw_backdrop)
@@ -108,6 +147,8 @@ class RadialMenu(Gtk.ApplicationWindow):
     def rebuild(self) -> None:
         while (child := self.fixed.get_first_child()) is not None:
             self.fixed.remove(child)
+        if self.preview is not None and self.preview.get_parent() is not None:
+            self.preview.unparent()
         self.bubbles = []
         if self.center is None:
             return
@@ -126,16 +167,13 @@ class RadialMenu(Gtk.ApplicationWindow):
             self.bubbles[0].grab_focus()
 
     def make_bubble(self, index: int, item: ops.Item) -> Gtk.Button:
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4, valign=Gtk.Align.CENTER)
-        if item.icon:
-            box.append(Gtk.Image.new_from_icon_name(icon_name(item.icon)))
-            label = Gtk.Label(label=item.label, css_classes=["caption"], wrap=True, justify=Gtk.Justification.CENTER,
-                              max_width_chars=12, lines=2)
-        else:  # форматы конвертации: крупная надпись вместо иконки
-            label = Gtk.Label(label=item.label, css_classes=["format"])
-        box.append(label)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5, valign=Gtk.Align.CENTER)
+        # у форматов конвертации своей иконки нет: рисуем лист, а формат пишем подписью
+        box.append(Gtk.Image.new_from_icon_name(icon_name(item.icon or "krug-file-symbolic")))
+        box.append(Gtk.Label(label=item.label, css_classes=["caption"], wrap=True, justify=Gtk.Justification.CENTER,
+                             max_width_chars=13, lines=2, ellipsize=Pango.EllipsizeMode.END))
         if item.children:
-            box.append(Gtk.Label(label="•••", css_classes=["caption"]))
+            box.append(Gtk.Label(label="•••", css_classes=["more"]))
         button = Gtk.Button(child=box, css_classes=["krug-bubble", "krug-pop"])
         button.set_size_request(BUBBLE_W, BUBBLE_H)
         if item.missing:
@@ -152,16 +190,24 @@ class RadialMenu(Gtk.ApplicationWindow):
         return button
 
     def make_center(self) -> Gtk.Button:
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, valign=Gtk.Align.CENTER)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, valign=Gtk.Align.CENTER,
+                      halign=Gtk.Align.CENTER)
         if len(self.stack) > 1:
-            box.append(Gtk.Image.new_from_icon_name("krug-back-symbolic"))
-            box.append(Gtk.Label(label="Назад", css_classes=["title"]))
+            image = Gtk.Image.new_from_icon_name("krug-back-symbolic")
+            image.set_pixel_size(32)
+            box.append(image)
+            box.append(Gtk.Label(label="Назад", css_classes=["krug-name"]))
         else:
-            box.append(Gtk.Label(label=self.menu_title, css_classes=["title"]))
-            name = self.files[0].name if len(self.files) == 1 else f"файлов: {len(self.files)}"
-            box.append(Gtk.Label(label=name, css_classes=["file"], ellipsize=Pango.EllipsizeMode.END, max_width_chars=14))
+            if self.preview is None:
+                self.preview = file_preview(self.files[0])
+            box.append(self.preview)
+            name = self.files[0].name if len(self.files) == 1 else f"Файлов: {len(self.files)}"
+            box.append(Gtk.Label(label=name, css_classes=["krug-name"], wrap=True, lines=2,
+                                 ellipsize=Pango.EllipsizeMode.MIDDLE, max_width_chars=16,
+                                 justify=Gtk.Justification.CENTER))
             if self.pages > 1:
-                box.append(Gtk.Label(label=f"стр. {self.page + 1} из {self.pages}  ›", css_classes=["file"]))
+                box.append(Gtk.Label(label=f"{self.page + 1} / {self.pages}  ›", css_classes=["krug-page"]))
+        box.set_tooltip_text(self.menu_title)
         button = Gtk.Button(child=box, css_classes=["krug-center", "krug-pop"])
         button.set_size_request(CENTER, CENTER)
         button.connect("clicked", lambda _b: self.on_center())
@@ -172,18 +218,39 @@ class RadialMenu(Gtk.ApplicationWindow):
         self.hint.set_visible(bool(text))
 
     def draw_backdrop(self, _area, cr, width: int, height: int) -> None:
-        cr.set_source_rgba(0, 0, 0, 0.28)
-        cr.paint()
+        # экран не затемняем: рисуем только диск под кольцом
         if self.center is None:
             return
         cx, cy = self.center
+        fill, line = ((0.13, 0.13, 0.15, 0.62), (1, 1, 1, 0.10)) if self.dark else ((1, 1, 1, 0.50), (1, 1, 1, 0.75))
         cr.arc(cx, cy, DISC, 0, 2 * math.pi)
-        cr.set_source_rgba(0.08, 0.08, 0.10, 0.55)
+        cr.set_source_rgba(*fill)
         cr.fill()
+        # светлый обод по краю
+        cr.arc(cx, cy, DISC - 6, 0, 2 * math.pi)
+        cr.set_source_rgba(*line)
+        cr.set_line_width(10)
+        cr.stroke()
         cr.arc(cx, cy, DISC - 0.5, 0, 2 * math.pi)
-        cr.set_source_rgba(1, 1, 1, 0.08)
+        cr.set_source_rgba(0, 0, 0, 0.08 if not self.dark else 0.3)
         cr.set_line_width(1)
         cr.stroke()
+        # линии между секторами: от середины к ободу
+        inner, outer = CENTER / 2 + 6, DISC - 12
+        cr.set_source_rgba(*line)
+        cr.set_line_width(2)
+        for angle in divider_angles(len(self.visible_items)):
+            dx, dy = math.sin(angle), -math.cos(angle)
+            cr.move_to(cx + inner * dx, cy + inner * dy)
+            cr.line_to(cx + outer * dx, cy + outer * dy)
+        cr.stroke()
+        # мягкое свечение в середине, под файлом
+        glow = cairo.RadialGradient(cx, cy, 0, cx, cy, CENTER / 2 + 6)
+        glow.add_color_stop_rgba(0, 1, 1, 1, 0.0 if self.dark else 0.35)
+        glow.add_color_stop_rgba(1, 1, 1, 1, 0.0)
+        cr.arc(cx, cy, CENTER / 2 + 6, 0, 2 * math.pi)
+        cr.set_source(glow)
+        cr.fill()
 
     # -------------------------------------------------------------- события
     def on_pointer(self, _controller, x: float, y: float) -> None:

@@ -11,49 +11,67 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 gi.require_version("Adw", "1")
 gi.require_version("Pango", "1.0")
-from gi.repository import Adw, Gdk, Gio, GLib, Gtk, Pango  # noqa: E402
+gi.require_version("GdkPixbuf", "2.0")
+from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, Gtk, Pango  # noqa: E402
 
 from .params import drag_to_crop, fit_rect  # noqa: E402
 
 CSS = """
 window.krug-menu { background: transparent; }
 
+/* карточки пунктов: светлые, как в образце; тёмный вариант — для тёмной темы */
 button.krug-bubble {
-  min-width: 100px; min-height: 78px; padding: 6px 8px;
-  border-radius: 24px;
-  background-color: alpha(#1f1f25, 0.94);
-  color: #ffffff;
-  border: 1px solid alpha(#ffffff, 0.08);
-  box-shadow: 0 8px 22px alpha(#000000, 0.35);
+  min-width: 104px; min-height: 70px; padding: 6px 8px;
+  border-radius: 16px;
+  background-color: alpha(#ffffff, 0.90);
+  color: #1d1d1f;
+  border: 1px solid alpha(#ffffff, 0.6);
+  box-shadow: 0 2px 10px alpha(#000000, 0.10);
   transition: background-color 120ms ease-out, transform 120ms ease-out, box-shadow 120ms ease-out;
 }
 button.krug-bubble:hover, button.krug-bubble:focus-visible {
-  background-color: @accent_bg_color;
-  color: @accent_fg_color;
-  transform: scale(1.08);
-  box-shadow: 0 10px 28px alpha(#000000, 0.45);
+  background-color: #ffffff;
+  transform: scale(1.07);
+  box-shadow: 0 6px 18px alpha(#000000, 0.18), 0 0 0 2px @accent_bg_color;
 }
-button.krug-bubble.missing { color: alpha(#ffffff, 0.45); }
-button.krug-bubble.missing:hover { background-color: alpha(#3a3a42, 0.96); color: #ffffff; }
-button.krug-bubble .format { font-size: 17pt; font-weight: 800; letter-spacing: 0.5px; }
-button.krug-bubble .caption { font-size: 9.5pt; font-weight: 600; }
-button.krug-bubble image { -gtk-icon-size: 26px; }
+button.krug-bubble .caption { font-size: 10pt; font-weight: 700; }
+button.krug-bubble .more { font-size: 8pt; font-weight: 800; color: alpha(currentColor, 0.45); }
+button.krug-bubble image { -gtk-icon-size: 24px; }
+button.krug-bubble.missing { color: alpha(#1d1d1f, 0.38); background-color: alpha(#ffffff, 0.62); }
 
-button.krug-center {
-  min-width: 132px; min-height: 132px; padding: 8px;
-  border-radius: 999px;
-  background-color: alpha(#121216, 0.97);
-  color: #ffffff;
-  border: 1px solid alpha(#ffffff, 0.10);
-  box-shadow: 0 10px 30px alpha(#000000, 0.45);
+window.krug-menu.dark button.krug-bubble {
+  background-color: alpha(#2c2c31, 0.92); color: #f4f4f6;
+  border-color: alpha(#ffffff, 0.08); box-shadow: 0 2px 12px alpha(#000000, 0.35);
 }
-button.krug-center:hover { background-color: alpha(#26262e, 0.98); }
-button.krug-center .title { font-size: 12pt; font-weight: 800; }
-button.krug-center .file { font-size: 9pt; color: alpha(#ffffff, 0.7); }
+window.krug-menu.dark button.krug-bubble:hover, window.krug-menu.dark button.krug-bubble:focus-visible {
+  background-color: #3a3a40; box-shadow: 0 6px 18px alpha(#000000, 0.45), 0 0 0 2px @accent_bg_color;
+}
+window.krug-menu.dark button.krug-bubble.missing { color: alpha(#f4f4f6, 0.4); background-color: alpha(#2c2c31, 0.7); }
+
+/* середина: миниатюра файла и имя на синей плашке, как выделенный файл */
+button.krug-center {
+  min-width: 150px; min-height: 150px; padding: 0;
+  border-radius: 999px; background: none; border: none; box-shadow: none;
+}
+button.krug-center:hover .krug-name { background-color: shade(@accent_bg_color, 1.12); }
+.krug-thumb-frame {
+  border-radius: 6px; background-color: #ffffff;
+  box-shadow: 0 2px 8px alpha(#000000, 0.25);
+}
+.krug-name {
+  padding: 2px 8px; border-radius: 6px;
+  background-color: @accent_bg_color; color: @accent_fg_color;
+  font-size: 9.5pt; font-weight: 700;
+}
+.krug-page { font-size: 8.5pt; font-weight: 700; color: alpha(#1d1d1f, 0.6); }
+window.krug-menu.dark .krug-page { color: alpha(#ffffff, 0.7); }
+
 .krug-hint {
   padding: 6px 14px; border-radius: 999px;
-  background-color: alpha(#121216, 0.92); color: #ffffff; font-weight: 600;
+  background-color: alpha(#ffffff, 0.95); color: #1d1d1f; font-weight: 600;
+  box-shadow: 0 2px 10px alpha(#000000, 0.15);
 }
+window.krug-menu.dark .krug-hint { background-color: alpha(#2c2c31, 0.95); color: #ffffff; }
 
 .krug-pop { animation: krug-pop 170ms ease-out; }
 @keyframes krug-pop {

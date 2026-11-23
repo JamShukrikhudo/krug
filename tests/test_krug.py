@@ -227,6 +227,14 @@ class Ring(unittest.TestCase):
             for x, y in bubble_positions(count, 0, 0):
                 self.assertAlmostEqual(math.hypot(x, y), RADIUS)
 
+    def test_dividers_sit_between_items(self):
+        from krug.geometry import divider_angles
+        self.assertEqual(divider_angles(1), [])
+        angles = divider_angles(4)
+        self.assertEqual(len(angles), 4)
+        for got, want in zip(angles, (45, 135, 225, 315)):
+            self.assertAlmostEqual(math.degrees(got), want)
+
 
 class Params(unittest.TestCase):
     def test_image_args(self):
