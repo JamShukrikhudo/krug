@@ -14,7 +14,7 @@ import cairo
 from .ui import Adw, Gdk, GdkPixbuf, Gio, GLib, Gtk, Pango, icon_name, in_thread, load_css
 from . import history, ops
 from .geometry import BUBBLE_H, BUBBLE_W, CENTER, DISC, bubble_positions, divider_angles
-from .util import notify
+from .util import log, notify
 
 PER_PAGE = 8
 # как в образце: зажали клавишу — кольцо переключилось на свой набор
@@ -346,7 +346,10 @@ class MenuApp(Adw.Application):
     def do_activate(self) -> None:
         load_css()
         items = ops.build_menu(self.menu, self.files)
-        RadialMenu(self, ops.MENU_TITLES[self.menu], items, self.files).present()
+        window = RadialMenu(self, ops.MENU_TITLES[self.menu], items, self.files)
+        window.present()
+        # GNOME может не отдать фокус окну, запущенному из «Файлов»: тогда клавиши до кольца не дойдут
+        GLib.timeout_add(800, lambda: log(f"кольцо открыто, фокус: {window.is_active()}") and False)
 
     # --------------------------------------------------------- выполнение
     def start(self, item: ops.Item, files: list[Path]) -> None:

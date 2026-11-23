@@ -6,14 +6,17 @@ krug edit ФАЙЛЫ...                      редактор с предпро�
 krug list convert|tools|actions ФАЙЛЫ  показать пункты меню текстом (без окна)
 krug hotkeys install|remove            сочетания Ctrl+Alt+1/2/3 в «Файлах»
 krug check                             какие внешние программы найдены
+krug log                               последние записи журнала ошибок
 """
 from __future__ import annotations
 
+import os
 import sys
+import traceback
 from pathlib import Path
 
 from . import __version__, ops
-from .util import notify, read_selection, which
+from .util import log, log_file, notify, read_selection, which
 
 MENUS = ("convert", "tools", "actions")
 TOOLS = (
@@ -30,6 +33,19 @@ def print_items(items: list[ops.Item], indent: str = "") -> None:
 
 
 def main(argv: list[str]) -> int:
+    """Запуск с записью любого сбоя в журнал, чтобы его можно было прочитать потом."""
+    if argv and argv[0] in MENUS:
+        log(f"запуск: {' '.join(argv)}  (Wayland: {bool(os.environ.get('WAYLAND_DISPLAY'))}, "
+            f"токен активации: {bool(os.environ.get('XDG_ACTIVATION_TOKEN'))})")
+    try:
+        return run(argv)
+    except Exception:  # noqa: BLE001
+        log("сбой:\n" + traceback.format_exc())
+        notify("krug: сбой", f"Подробности: {log_file()} или команда krug log", error=True)
+        return 1
+
+
+def run(argv: list[str]) -> int:
     if not argv:
         from .app import run_app
         return run_app()
@@ -39,6 +55,11 @@ def main(argv: list[str]) -> int:
     command, args = argv[0], argv[1:]
     if command in ("-V", "--version"):
         print(__version__)
+    elif command == "log":
+        try:
+            print("\n".join(log_file().read_text(encoding="utf-8").splitlines()[-60:]))
+        except OSError:
+            print("Журнал пуст")
     elif command == "check":
         for names in TOOLS:
             print(f"{'OK     ' if which(*names) else 'НЕТ    '} {names[0]}")

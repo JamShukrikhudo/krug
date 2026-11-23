@@ -70,8 +70,29 @@ def run(cmd: list[str], cwd: Path | None = None, input_bytes: bytes | None = Non
     return proc
 
 
+def log_file() -> Path:
+    base = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local" / "state")
+    return base / APP_NAME / "krug.log"
+
+
+def log(text: str) -> None:
+    """Дописывает строку в журнал ~/.local/state/krug/krug.log: уведомления исчезают, журнал остаётся."""
+    import time
+    try:
+        path = log_file()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.exists() and path.stat().st_size > 512 * 1024:  # не даём журналу разрастись
+            path.replace(path.with_suffix(".log.old"))
+        with path.open("a", encoding="utf-8") as f:
+            f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {text.rstrip()}\n")
+    except OSError:
+        pass
+
+
 def notify(title: str, body: str = "", error: bool = False) -> None:
-    """Системное уведомление; без notify-send просто печатает в терминал."""
+    """Системное уведомление; без notify-send просто печатает в терминал. Ошибки пишутся и в журнал."""
+    if error:
+        log(f"ОШИБКА {title}: {body}")
     tool = which("notify-send")
     if tool and os.environ.get("KRUG_NO_NOTIFY") != "1":
         icon = "dialog-error" if error else "emblem-ok-symbolic"

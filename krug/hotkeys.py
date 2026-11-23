@@ -19,10 +19,13 @@ KEYS = (
 )
 SCRIPT = """#!/bin/sh
 # Создано krug. «Файлы» передают выделенные файлы в NAUTILUS_SCRIPT_SELECTED_FILE_PATHS, по одному в строке.
+# Сообщения об ошибках сохраняются в журнал: krug log
+LOG="${{XDG_STATE_HOME:-$HOME/.local/state}}/krug"
+mkdir -p "$LOG"
 set -f
 IFS='
 '
-exec "{launcher}" {menu} $NAUTILUS_SCRIPT_SELECTED_FILE_PATHS
+exec "{launcher}" {menu} $NAUTILUS_SCRIPT_SELECTED_FILE_PATHS 2>>"$LOG/krug.log"
 """
 
 # старые глобальные сочетания GNOME
