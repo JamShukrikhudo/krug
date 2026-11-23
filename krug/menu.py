@@ -17,6 +17,12 @@ from .geometry import BUBBLE_H, BUBBLE_W, CENTER, DISC, bubble_positions, divide
 from .util import notify
 
 PER_PAGE = 8
+# как в образце: зажали клавишу — кольцо переключилось на свой набор
+MODES = (
+    ("convert", "Shift", (Gdk.KEY_Shift_L, Gdk.KEY_Shift_R)),
+    ("actions", "Ctrl", (Gdk.KEY_Control_L, Gdk.KEY_Control_R)),
+    ("tools", "Alt", (Gdk.KEY_Alt_L, Gdk.KEY_Alt_R, Gdk.KEY_Meta_L, Gdk.KEY_Meta_R, Gdk.KEY_ISO_Level3_Shift)),
+)
 THUMB = 64
 
 
@@ -56,6 +62,7 @@ class RadialMenu(Gtk.ApplicationWindow):
         super().__init__(application=app, title="krug")
         self.app = app
         self.menu_title = title
+        self.menu = next((m for m, t in ops.MENU_TITLES.items() if t == title), "convert")
         self.files = files
         self.stack: list[list[ops.Item]] = [items]
         self.page = 0
@@ -162,9 +169,36 @@ class RadialMenu(Gtk.ApplicationWindow):
         self.hint.set_visible(False)
         self.fixed.put(self.hint, cx - 260, cy + DISC + 6)
         self.hint.set_size_request(520, -1)
+        self.fixed.put(self.make_modes(), cx - 230, cy - DISC - 50)
+        if not self.items:
+            self.show_hint("Для этого файла здесь ничего нет. Попробуйте Shift, Ctrl или Alt")
         self.backdrop.queue_draw()
         if self.bubbles:
             self.bubbles[0].grab_focus()
+
+    def make_modes(self) -> Gtk.Box:
+        """Строка над кольцом: какой набор открыт и какой клавишей переключить."""
+        bar = Gtk.Box(spacing=6, halign=Gtk.Align.CENTER, css_classes=["krug-modes", "krug-pop"])
+        bar.set_size_request(460, -1)
+        for menu, key, _keys in MODES:
+            box = Gtk.Box(spacing=6)
+            box.append(Gtk.Label(label=key, css_classes=["keycap"]))
+            box.append(Gtk.Label(label=ops.MENU_TITLES[menu]))
+            button = Gtk.Button(child=box, css_classes=["krug-mode"])
+            if menu == self.menu:
+                button.add_css_class("active")
+            button.connect("clicked", lambda _b, m=menu: self.switch_menu(m))
+            bar.append(button)
+        return bar
+
+    def switch_menu(self, menu: str) -> None:
+        if menu == self.menu and len(self.stack) == 1:
+            return
+        self.menu = menu
+        self.menu_title = ops.MENU_TITLES[menu]
+        self.stack = [ops.build_menu(menu, self.files)]
+        self.page = 0
+        self.rebuild()
 
     def make_bubble(self, index: int, item: ops.Item) -> Gtk.Button:
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5, valign=Gtk.Align.CENTER)
@@ -274,7 +308,10 @@ class RadialMenu(Gtk.ApplicationWindow):
             self.close()
 
     def on_key(self, _controller, keyval: int, _keycode: int, _state) -> bool:
-        if keyval == Gdk.KEY_Escape:
+        mode = next((m for m, _k, keys in MODES if keyval in keys), None)
+        if mode:
+            self.switch_menu(mode)
+        elif keyval == Gdk.KEY_Escape:
             self.back()
         elif keyval in (Gdk.KEY_Page_Down, Gdk.KEY_Down):
             self.turn_page(1)

@@ -21,7 +21,7 @@ from krug import ops  # noqa: E402
 from krug.app import MainWindow  # noqa: E402
 from krug.editors import open_editor  # noqa: E402
 from krug.menu import RadialMenu  # noqa: E402
-from krug.ui import Adw, Gio, GLib, Gtk, load_css  # noqa: E402
+from krug.ui import Adw, Gdk, Gio, GLib, Gtk, load_css  # noqa: E402
 
 ASSETS = Path(sys.argv[1]).resolve()
 SHOTS = Path(sys.argv[2]).resolve()
@@ -116,6 +116,7 @@ STEPS = [
     ("05-menu-submenu", lambda app: menu(app, "tools", [photo], open_submenu)),
     ("06-menu-actions", lambda app: menu(app, "actions", [photo, pdf])),
     ("07-menu-video", lambda app: menu(app, "tools", [clip])),
+    ("07b-menu-ctrl-switch", lambda app: menu(app, "convert", [pdf], lambda w: w.on_key(None, Gdk.KEY_Control_L, 0, 0))),
     ("08-editor-image", lambda app: editor(app, "image", [photo], tune_image)),
     ("09-editor-image-crop", lambda app: editor(app, "image", [photo], crop_mode)),
     ("10-editor-video", lambda app: editor(app, "video", [clip], tune_video)),

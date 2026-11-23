@@ -66,6 +66,14 @@ button.krug-center:hover .krug-name { background-color: shade(@accent_bg_color, 
 .krug-page { font-size: 8.5pt; font-weight: 700; color: alpha(#1d1d1f, 0.6); }
 window.krug-menu.dark .krug-page { color: alpha(#ffffff, 0.7); }
 
+.krug-modes { padding: 4px; border-radius: 999px; background-color: alpha(#ffffff, 0.85);
+  box-shadow: 0 2px 10px alpha(#000000, 0.12); }
+button.krug-mode { padding: 4px 12px; border-radius: 999px; background: none; color: #1d1d1f; font-weight: 600; }
+button.krug-mode:hover { background-color: alpha(#000000, 0.06); }
+button.krug-mode.active { background-color: @accent_bg_color; color: @accent_fg_color; }
+button.krug-mode .keycap { padding: 0 6px; font-size: 8.5pt; }
+window.krug-menu.dark .krug-modes { background-color: alpha(#2c2c31, 0.92); }
+window.krug-menu.dark button.krug-mode { color: #ffffff; }
 .krug-hint {
   padding: 6px 14px; border-radius: 999px;
   background-color: alpha(#ffffff, 0.95); color: #1d1d1f; font-weight: 600;
